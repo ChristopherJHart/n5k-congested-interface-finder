@@ -1,3 +1,4 @@
+---
 name: Lint Python application
 on:  # yamllint disable-line rule:truthy
   push:
