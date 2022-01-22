@@ -24,7 +24,7 @@ Nexus 5500 series switches offer a command - `show hardware internal carmel asic
 match .*STA.*frh.*` - that can identify the amount of data stored in a specific egress interface's
 virtual queue at the time of the command's execution. This command is useful when network
 congestion is constantly occurring (meaning, input discards are constantly incrementing on one or
-more interfaces), but is not very useful when network congestion is intermittent and strikes over a 
+more interfaces), but is not very useful when network congestion is intermittent and strikes over a
 small period of time.
 
 This script is designed to assist network operators with identifying intermittently-congested
@@ -74,7 +74,7 @@ __license__ = """
 # or implied.
 ################################################################################
 """
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 parser = argparse.ArgumentParser(
     description=(
@@ -229,7 +229,7 @@ def parse_asic_registers(cli_output: str) -> List[dict]:
     above).
 
     Each individual register matching the regular expression pattern is appended to a list, which
-    is ultimately return.
+    is ultimately returned.
     """
     results = []
     congestion_register_pattern = re.compile(
@@ -264,7 +264,10 @@ async def get_asic_registers(conn: AsyncNXOSDriver, mappings: List[dict]) -> Lis
     for asic_id in range(0, 14):  # Hard-coding ASIC IDs, this is bad, but oh well.
         raw_output = await command(
             conn,
-            f"show hardware internal carmel asic {asic_id} registers match .*STA.*frh.* | exclude '| 0$'",
+            (
+                f"show hardware internal carmel asic {asic_id} registers match .*STA.*frh.* "
+                "| exclude '| 0$'"
+            ),
         )
         parsed_results = parse_asic_registers(raw_output)
         for r in parsed_results:
@@ -371,7 +374,10 @@ async def main(results: List[dict]) -> None:
                 current_discards = discards_data.get("current_discards")
                 registers = await get_asic_registers(conn, interface_mappings)
                 console.print(
-                    f"[{now}] {discards_data.get('discards_delta')} new input discards found on {args.interface}, {len(registers)} ASIC registers!",
+                    (
+                        f"[{now}] {discards_data.get('discards_delta')} new input discards found "
+                        f"on {args.interface}, {len(registers)} ASIC registers!"
+                    ),
                     style="red",
                 )
                 results.append(
@@ -405,24 +411,37 @@ if __name__ == "__main__":
             console.print("")
             for result in results:
                 console.print(
-                    f"{result.get('timestamp')}: {result.get('discards')} input discards (+{result.get('discards_delta')})"
+                    (
+                        f"{result.get('timestamp')}: {result.get('discards')} input discards "
+                        f"(+{result.get('discards_delta')})"
+                    )
                 )
                 for register in result.get("registers"):
                     console.print(
-                        f"    Ethernet{register.get('interface')} (S{register.get('slot')}A{register.get('asic')} {register.get('address')}): {register.get('value')}"
+                        (
+                            f"    Ethernet{register.get('interface')} (S{register.get('slot')}"
+                            f"A{register.get('asic')} {register.get('address')}): "
+                            f"{register.get('value')}"
+                        )
                     )
             console.print("")
             console.print("Top Talkers:")
             talkers = {}
             for result in results:
                 for r in result.get("registers"):
-                    identifier = f"Ethernet{r.get('interface')} (S{r.get('slot')}A{r.get('asic')} {r.get('address')})"
+                    identifier = (
+                        f"Ethernet{r.get('interface')} (S{r.get('slot')}A{r.get('asic')} "
+                        f"{r.get('address')})"
+                    )
                     talkers[identifier] = r.get("value") + talkers.get(identifier, 0)
             for k in sorted(talkers.items(), key=lambda x: x[1], reverse=True):
                 console.print(f"{k[0]}: {k[1]}")
         else:
             console.print(
-                f"Input discards on interface {args.interface} did not increment during script's execution, so no register data was collected.",
+                (
+                    f"Input discards on interface {args.interface} did not increment during "
+                    "script's execution, so no register data was collected."
+                ),
                 style="red",
                 highlight=False,
             )
